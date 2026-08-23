@@ -1,0 +1,10 @@
+node_modules/
+dist/
+output/
+.playwright-cli/
+.impeccable/
+.agents/
+*.log
+.env
+.env.*
+!.env.example
