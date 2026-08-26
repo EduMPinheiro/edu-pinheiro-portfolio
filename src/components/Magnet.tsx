@@ -31,10 +31,12 @@ export default function Magnet({
 
   useEffect(() => {
     const finePointer = window.matchMedia('(pointer: fine)');
+    const coarsePointer = window.matchMedia('(pointer: coarse)');
     const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
     let frameId: number | null = null;
     let listening = false;
     let active = false;
+    let touchActive = false;
     let latestEvent: PointerEvent | null = null;
 
     const reset = () => {
@@ -69,6 +71,23 @@ export default function Magnet({
       inner.style.transform = `translate3d(${x}px, ${y}px, 0)`;
     };
 
+    const handleTouchStart = (event: PointerEvent) => {
+      if (!event.isPrimary || event.pointerType !== 'touch' || !wrapperRef.current || !innerRef.current || reducedMotion.matches) return;
+      const { left, top, width, height } = wrapperRef.current.getBoundingClientRect();
+      const x = clamp((event.clientX - (left + width / 2)) * 0.14, maxOffset);
+      const y = clamp((event.clientY - (top + height / 2)) * 0.14, maxOffset);
+      touchActive = true;
+      innerRef.current.style.transition = activeTransition;
+      innerRef.current.style.transform = `translate3d(${x}px, ${y}px, 0) scale(1.04)`;
+      try { wrapperRef.current.setPointerCapture?.(event.pointerId); } catch {}
+    };
+
+    const handleTouchEnd = (event: PointerEvent) => {
+      if (event.pointerType !== 'touch' || !touchActive) return;
+      touchActive = false;
+      reset();
+    };
+
     const handlePointerMove = (event: PointerEvent) => {
       if (!event.isPrimary || event.pointerType === 'touch') return;
       latestEvent = event;
@@ -79,13 +98,19 @@ export default function Magnet({
       if (!listening) return;
       listening = false;
       window.removeEventListener('pointermove', handlePointerMove);
+      wrapperRef.current?.removeEventListener('pointerdown', handleTouchStart);
+      window.removeEventListener('pointerup', handleTouchEnd);
+      window.removeEventListener('pointercancel', handleTouchEnd);
     };
 
     const updateAvailability = () => {
-      const enabled = !disabled && finePointer.matches && !reducedMotion.matches;
+      const enabled = !disabled && !reducedMotion.matches && (finePointer.matches || coarsePointer.matches);
       if (enabled && !listening) {
         listening = true;
         window.addEventListener('pointermove', handlePointerMove, { passive: true });
+        wrapperRef.current?.addEventListener('pointerdown', handleTouchStart);
+        window.addEventListener('pointerup', handleTouchEnd);
+        window.addEventListener('pointercancel', handleTouchEnd);
       } else if (!enabled) {
         removePointerListener();
         reset();
@@ -93,12 +118,14 @@ export default function Magnet({
     };
 
     finePointer.addEventListener('change', updateAvailability);
+    coarsePointer.addEventListener('change', updateAvailability);
     reducedMotion.addEventListener('change', updateAvailability);
     updateAvailability();
 
     return () => {
       removePointerListener();
       finePointer.removeEventListener('change', updateAvailability);
+      coarsePointer.removeEventListener('change', updateAvailability);
       reducedMotion.removeEventListener('change', updateAvailability);
       if (frameId !== null) cancelAnimationFrame(frameId);
       frameId = null;
