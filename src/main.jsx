@@ -6,6 +6,7 @@ import Magnet from './components/Magnet';
 import SplashCursor from './components/SplashCursor';
 import ProjectBrowserFrame from './components/ProjectBrowserFrame';
 import { BorderBeam } from './components/ui/BorderBeam';
+import { trackEvent, trackPageView } from './analytics';
 import './styles.css';
 
 const contact = {
@@ -48,6 +49,7 @@ function App() {
   const [path, setPath] = useState(window.location.pathname);
   const copy = texts[locale];
   useEffect(() => { document.documentElement.lang = locale === 'pt' ? 'pt-BR' : 'en'; document.title = 'Edu Pinheiro — Web Designer & Developer'; }, [locale]);
+  useEffect(() => { trackPageView(); }, [path]);
   useEffect(() => { const onPop = () => setPath(window.location.pathname); addEventListener('popstate', onPop); return () => removeEventListener('popstate', onPop); }, []);
   const navigate = (href) => {
     const [pathname, hash] = href.split('#');
@@ -74,6 +76,12 @@ function Header({ copy, navigate, toggleLocale, onAbout, casePage = false }) {
 }
 
 function localeLabel(copy, alternate = false) { return copy.work === 'Projetos' ? (alternate ? 'EN' : 'PT') : (alternate ? 'PT' : 'EN'); }
+
+function trackContactClick(href) {
+  if (href === contact.whatsapp) trackEvent('whatsapp_click');
+  if (href.startsWith('mailto:')) trackEvent('email_click');
+  if (href === contact.instagram) trackEvent('instagram_click');
+}
 function hexToRgbChannels(hex) {
   const value = hex.replace('#', '');
   if (!/^[0-9a-f]{6}$/i.test(value)) return '47, 91, 255';
@@ -85,7 +93,7 @@ function accentLastWord(text) { const words = text.split(" "); return <>{words.s
 function Home({ copy, locale, navigate, toggleLocale }) {
   const [aboutOpen, setAboutOpen] = useState(false);
   const aboutTriggerRef = useRef(null);
-  return <div className="site-shell"><Header copy={copy} navigate={navigate} toggleLocale={toggleLocale} onAbout={(trigger) => { aboutTriggerRef.current = trigger; setAboutOpen(true); }} /><main><section className="compact-hero"><div className="shell hero-grid"><div className="hero-main-content"><p className="hero-kicker"><span className="hero-label">EDU.PINHEIRO / {copy.role.toUpperCase()}</span></p><h1 className="hero-title"><span>{copy.lead}</span><span>{copy.rest}</span></h1><div className="hero-bottom-row"><div className="hero-intro"><p>{copy.intro}</p><a className="text-cta" href={contact.whatsapp} target="_blank" rel="noreferrer">{copy.start}<Arrow external /></a></div><a className="hero-scroll" href="#projetos" onClick={(event) => { event.preventDefault(); navigate('#projetos'); }}>{copy.explore}<span aria-hidden="true">↓</span></a></div></div><div className="hero-art" aria-hidden="true"><span className="hero-signature-entry"><Magnet padding={80} magnetStrength={8} maxOffset={5} activeTransition="transform 0.35s cubic-bezier(0.22, 1, 0.36, 1)" inactiveTransition="transform 0.6s cubic-bezier(0.22, 1, 0.36, 1)" wrapperClassName="hero-signature-magnet" innerClassName="hero-signature-magnet-inner"><span className="hero-mark">/E</span></Magnet></span><i className="hero-cross" /><i className="hero-dots" /><i className="hero-rule" /></div></div></section><HeroCarousel copy={copy} locale={locale} /><section className="compact-contact" id="contato"><div className="shell contact-inner"><div><span className="section-kicker contact-protocol"><b>03</b> / {copy.contactProtocol}</span><h2>{accentLastWord(copy.contactTitle)}</h2><p>{copy.contactBody}</p></div><a className="contact-cta" href={contact.whatsapp} target="_blank" rel="noreferrer">{copy.contactAction}<Arrow external /></a></div></section></main><Footer copy={copy} />{aboutOpen && <AboutPanel copy={copy} close={() => { setAboutOpen(false); requestAnimationFrame(() => aboutTriggerRef.current?.focus()); }} />}</div>;
+  return <div className="site-shell"><Header copy={copy} navigate={navigate} toggleLocale={toggleLocale} onAbout={(trigger) => { aboutTriggerRef.current = trigger; setAboutOpen(true); }} /><main><section className="compact-hero"><div className="shell hero-grid"><div className="hero-main-content"><p className="hero-kicker"><span className="hero-label">EDU.PINHEIRO / {copy.role.toUpperCase()}</span></p><h1 className="hero-title"><span>{copy.lead}</span><span>{copy.rest}</span></h1><div className="hero-bottom-row"><div className="hero-intro"><p>{copy.intro}</p><a className="text-cta" href={contact.whatsapp} target="_blank" rel="noreferrer" onClick={() => { trackEvent('whatsapp_click'); trackEvent('contact_cta_click'); }}>{copy.start}<Arrow external /></a></div><a className="hero-scroll" href="#projetos" onClick={(event) => { event.preventDefault(); navigate('#projetos'); }}>{copy.explore}<span aria-hidden="true">↓</span></a></div></div><div className="hero-art" aria-hidden="true"><span className="hero-signature-entry"><Magnet padding={80} magnetStrength={8} maxOffset={5} activeTransition="transform 0.35s cubic-bezier(0.22, 1, 0.36, 1)" inactiveTransition="transform 0.6s cubic-bezier(0.22, 1, 0.36, 1)" wrapperClassName="hero-signature-magnet" innerClassName="hero-signature-magnet-inner"><span className="hero-mark">/E</span></Magnet></span><i className="hero-cross" /><i className="hero-dots" /><i className="hero-rule" /></div></div></section><HeroCarousel copy={copy} locale={locale} /><section className="compact-contact" id="contato"><div className="shell contact-inner"><div><span className="section-kicker contact-protocol"><b>03</b> / {copy.contactProtocol}</span><h2>{accentLastWord(copy.contactTitle)}</h2><p>{copy.contactBody}</p></div><a className="contact-cta" href={contact.whatsapp} target="_blank" rel="noreferrer" onClick={() => { trackEvent('whatsapp_click'); trackEvent('contact_cta_click'); }}>{copy.contactAction}<Arrow external /></a></div></section></main><Footer copy={copy} />{aboutOpen && <AboutPanel copy={copy} close={() => { setAboutOpen(false); requestAnimationFrame(() => aboutTriggerRef.current?.focus()); }} />}</div>;
 }
 
 function HeroCarousel({ copy, locale }) {
@@ -142,6 +150,7 @@ function HeroCarousel({ copy, locale }) {
   const select = (index, nextDirection = index > activeIndex ? 1 : -1) => {
     if (animationLockRef.current || index === activeIndex) return;
     animationLockRef.current = true;
+    trackEvent('project_open', { project_name: projects[index].name });
     setDirection(nextDirection);
     setIsAnimating(true);
     setActiveIndex(index);
@@ -237,7 +246,7 @@ function HeroCarousel({ copy, locale }) {
         <motion.div key={active.slug} className="carousel-info" initial={{ opacity: 0, x: 12 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: reduced ? 0 : .32, ease }}>
           <div className="carousel-info-main">
             <div className="project-info"><span className="project-number">{String(activeIndex + 1).padStart(2, '0')}</span><div><h3>{active.name}</h3><p className="status">{locale === 'pt' ? active.status : active.statusEn}</p></div></div>
-            <div className="carousel-meta"><p className="summary">{locale === 'pt' ? active.summary : active.summaryEn}</p><a className="slide-link" href={active.href} target="_blank" rel="noreferrer">{copy.view}<Arrow external /></a></div>
+            <div className="carousel-meta"><p className="summary">{locale === 'pt' ? active.summary : active.summaryEn}</p><a className="slide-link" href={active.href} target="_blank" rel="noreferrer" onClick={() => trackEvent('project_open', { project_name: active.name })}>{copy.view}<Arrow external /></a></div>
           </div>
           <div className="project-details">
             {detailItems.map((item) => <div className="project-detail" key={item.label}><span className="project-detail-label">{item.label}</span><p className="project-detail-value">{item.value}</p></div>)}
@@ -278,10 +287,16 @@ function AboutPanel({ copy, close }) {
 
 function Footer({ copy }) {
   const links = [['WhatsApp', contact.whatsapp], [copy.email, 'mailto:' + contact.email], ['GitHub', contact.github], [copy.instagram, contact.instagram]];
-  return <footer className="compact-footer"><div className="shell"><div className="footer-row"><span>Edu Pinheiro, {copy.role}</span><span>{copy.location}</span></div><div className="footer-links">{links.map(([name, href]) => <a key={name + href} href={href} target={href.startsWith('mailto') ? undefined : '_blank'} rel="noreferrer"><span>{name}</span><Arrow external /></a>)}</div><div className="footer-bottom"><span>© Edu Pinheiro</span><span>{copy.footerWork}</span></div></div></footer>;
+  return <footer className="compact-footer"><div className="shell"><div className="footer-row"><span>Edu Pinheiro, {copy.role}</span><span>{copy.location}</span></div><div className="footer-links">{links.map(([name, href]) => <a key={name + href} href={href} target={href.startsWith('mailto') ? undefined : '_blank'} rel="noreferrer" onClick={() => trackContactClick(href)}><span>{name}</span><Arrow external /></a>)}</div><div className="footer-bottom"><span>© Edu Pinheiro</span><span>{copy.footerWork}</span></div></div></footer>;
 }
 
 function CasePage({ project, copy, locale, navigate, toggleLocale }) {
+const trackedProjectRef = useRef(null);
+  useEffect(() => {
+    if (trackedProjectRef.current === project.slug) return;
+    trackedProjectRef.current = project.slug;
+    trackEvent('project_open', { project_name: project.name });
+  }, [project.slug]);
   const next = projects[(projects.indexOf(project) + 1) % projects.length];
   return <div className="site-shell"><Header copy={copy} navigate={navigate} toggleLocale={toggleLocale} casePage /><main><section className="case-hero shell"><a className="back-link" href="/#projetos" onClick={(event) => { event.preventDefault(); navigate('/#projetos'); }}>← {copy.back}</a><div className="case-title-block"><span className="project-number">{String(projects.indexOf(project) + 1).padStart(2, '0')}</span><span className="status">{locale === 'pt' ? project.status : project.statusEn}</span><h1>{project.name}</h1><p>{locale === 'pt' ? project.summary : project.summaryEn}</p></div></section><section className="case-image shell"><img src={project.image} alt={copy.fullPreviewOf + ' ' + project.name} /></section><section className="case-details shell"><div><small>{copy.context}</small><p>{locale === 'pt' ? project.summary : project.summaryEn}</p></div><div><small>{copy.contribution}</small><p>{copy.contributionValue}</p></div><div><a className="text-cta" href={project.href} target="_blank" rel="noreferrer">{copy.view}<Arrow external /></a></div></section><section className="case-next shell"><span>{copy.next}</span><a href={'/projetos/' + next.slug} onClick={(event) => { event.preventDefault(); navigate('/projetos/' + next.slug); }}><strong>{next.name}</strong><Arrow /></a></section></main><Footer copy={copy} /></div>;
 }
